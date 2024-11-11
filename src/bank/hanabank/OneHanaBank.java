@@ -38,7 +38,9 @@ interface Account {
     void withdraw(int amount) throws Exception;
     void transfer(Account target, int amount) throws Exception;
     void displayInfo();
-    String getAccountName();  // 계좌 이름 반환 메서드 추가
+    String getAccountName();
+    String getAccountNumber();
+    Map<String, String> getActionDescriptions();
 }
 
 abstract class BasicAccount implements Account {
@@ -60,8 +62,23 @@ abstract class BasicAccount implements Account {
     }
 
     @Override
-    public String getAccountName() {  // 계좌 이름 반환 메서드 구현
+    public String getAccountName() {
         return accountName;
+    }
+
+    @Override
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    @Override
+    public Map<String, String> getActionDescriptions() {
+        Map<String, String> actions = new HashMap<>();
+        actions.put("+", "입금");
+        actions.put("-", "출금");
+        actions.put("T", "이체");
+        actions.put("I", "정보");
+        return actions;
     }
 }
 
@@ -111,12 +128,21 @@ class FixedDepositAccount extends BasicAccount {
         target.deposit(finalAmount);
         isMatured = true;
         balance = 0;
-        System.out.println(accountName + "은 해지되었습니다. 감사합니다.");
     }
 
     private int calculateMaturityAmount() {
         double interestRate = interestRateCalculator.getInterestRate(depositMonths);
         return (int) (balance * (1 + interestRate / 100));
+    }
+
+    public void displayDetailInfo(){
+        int[] monthThresholds = interestRateCalculator.getMonthThresholds();
+        double[] interestRates = interestRateCalculator.getInterestRates();
+        System.out.println("* 예치 개월에 따른 적용 금리");
+        for (int i = 0; i < interestRates.length; i++) {
+            System.out.println("    " + monthThresholds[i] + "개월 이상    " + interestRates[i] + "%");
+        }
+        System.out.println("    " + monthThresholds[monthThresholds.length - 1] + "개월 이상    " + interestRates[interestRates.length - 1] + "%");
     }
 
     @Override
@@ -127,12 +153,22 @@ class FixedDepositAccount extends BasicAccount {
 
     @Override
     public void withdraw(int amount) throws Exception {
-        throw new Exception("출금할 수 없는 통장입니다.");
+        throw new UnsupportedOperationException("출금할 수 없는 통장입니다.");
     }
 
     @Override
     public void transfer(Account target, int amount) throws Exception {
-        throw new Exception("이체할 수 없는 통장입니다.");
+        throw new UnsupportedOperationException("이체할 수 없는 통장입니다.");
+    }
+
+    @Override
+    public Map<String, String> getActionDescriptions() {
+        Map<String, String> actions = new HashMap<>();
+        actions.put("+", "만기처리");
+        actions.put("-", "인출");
+        actions.put("T", "이체");
+        actions.put("I", "정보");
+        return actions;
     }
 }
 
@@ -151,6 +187,7 @@ class OverdraftAccount extends BasicAccount {
     public void withdraw(int amount) {
         balance -= amount;
         System.out.println(accountName + "에서 " + amount + "원이 출금되었습니다.");
+        System.out.println(accountName + "의 잔액은 " + balance + "원입니다.");
     }
 
     @Override
@@ -172,10 +209,14 @@ class AccountHandler {
 
     public void start() {
         while (true) {
-            System.out.print("통장을 선택하세요 (1:자유입출금, 2:정기예금, 3:마이너스): ");
+            StringBuilder menu = new StringBuilder();
+            for (Map.Entry<String, Account> entry : accounts.entrySet()) {
+                menu.append(entry.getKey()).append(": ").append(entry.getValue().getAccountName()).append(", ");
+            }
+            System.out.print("통장을 선택하세요 ("+menu+"0 또는 엔터: 종료) ");
             String choice = scanner.nextLine();
 
-            if (choice.equals("0")) break;
+            if (choice.equals("0") || choice.trim().isEmpty()) break;
 
             Account account = accounts.get(choice);
             if (account == null) {
@@ -188,16 +229,66 @@ class AccountHandler {
     }
 
     private void handleAccount(Account account) {
+        account.displayInfo();
         while (true) {
-            System.out.print("원하시는 업무는? (+: 입금, -: 출금, T: 이체, I: 정보, 0: 종료): ");
+            Map<String, String> actions = account.getActionDescriptions();
+            StringBuilder menu = new StringBuilder();
+            for (Map.Entry<String, String> entry : actions.entrySet()) {
+                menu.append(entry.getKey()).append(": ").append(entry.getValue()).append(", ");
+            }
+            System.out.print("원하시는 업무는? " + "(" + menu + "0: 종료) ");
             String action = scanner.nextLine();
-
             try {
                 switch (action) {
-                    case "+" -> account.deposit(getAmount("입금 하실 금액은? "));
-                    case "-" -> account.withdraw(getAmount("출금 하실 금액은? "));
-                    case "T" -> handleTransfer(account);
-                    case "I" -> account.displayInfo();
+                    case "+" -> {
+                        if (account instanceof FixedDepositAccount) {
+                            while(true){
+                                int months = getAmount("예치 개월 수를 입력하세요? (1 ~ 60 개월) ");
+                                if(months == 0) break;
+                                String response = getUserInput("만기 처리하시겠어요? (y/n): ");
+
+                                if (response.equalsIgnoreCase("Y")) {
+                                    String targetChoice = getUserInput("어디로 보낼까요? (1: 자유입출금, 3: 마이너스): ");
+                                    Account target = accounts.get(targetChoice);
+                                    try {
+                                        ((FixedDepositAccount) account).matureAccount(months, target);
+                                        accounts.remove(((FixedDepositAccount) account).getAccountNumber());
+                                        System.out.println(((FixedDepositAccount) account).getAccountName() + "은 해지되었습니다. 감사합니다.");
+                                        break;
+                                    } catch (Exception e) {
+                                        System.out.println(e.getMessage());
+                                    }
+                                }
+                            }
+                        } else {
+                            account.deposit(getAmount("입금 하실 금액은? "));
+                        }
+                    }
+                    case "-" -> {
+                        if (account instanceof FixedDepositAccount) {
+                            throw new UnsupportedOperationException("출금할 수 없는 통장입니다.");
+                        }
+                        while(true){
+                            try{
+                                account.withdraw(getAmount("출금 하실 금액은? "));
+                                break;
+                            }catch(Exception e){
+                                System.out.println(e.getMessage());
+                            }
+                        }
+                    }
+                    case "T" -> {
+                        if (account instanceof FixedDepositAccount) {
+                            throw new UnsupportedOperationException("이체할 수 없는 통장입니다.");
+                        }
+                        handleTransfer(account);
+                    }
+                    case "I" -> {
+                        account.displayInfo();
+                        if (account instanceof FixedDepositAccount) {
+                            ((FixedDepositAccount) account).displayDetailInfo();
+                        }
+                    }
                     case "0" -> { return; }
                     default -> System.out.println("잘못된 입력입니다.");
                 }
@@ -207,14 +298,22 @@ class AccountHandler {
         }
     }
 
+
     private void handleTransfer(Account account) throws Exception {
         System.out.print("어디로 보낼까요? (1:자유입출금, 2:정기예금, 3:마이너스): ");
         String targetChoice = scanner.nextLine();
         Account targetAccount = accounts.get(targetChoice);
 
         if (targetAccount != null) {
-            int amount = getAmount(targetAccount.getAccountName() + "에 보낼 금액은? ");
-            account.transfer(targetAccount, amount);
+            while(true) {
+                try {
+                    int amount = getAmount(targetAccount.getAccountName() + "에 보낼 금액은? ");
+                    account.transfer(targetAccount, amount);
+                    break;
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            }
         } else {
             System.out.println("잘못된 계좌 선택입니다.");
         }
@@ -223,14 +322,27 @@ class AccountHandler {
     private int getAmount(String message) {
         System.out.print(message);
         int amount = scanner.nextInt();
-        scanner.nextLine();
+        scanner.nextLine(); // Enter key 입력 처리
         return amount;
+    }
+
+    private String getUserInput(String message) {
+        System.out.print(message);
+        return scanner.nextLine();
     }
 }
 
 class InterestRateCalculator {
     private static final double[] INTEREST_RATES = {3.0, 3.35, 3.4, 3.35, 3.35, 2.9, 2.9, 2.9};
     private static final int[] MONTH_THRESHOLDS = {1, 3, 6, 9, 12, 24, 36, 48, 60};
+
+    int[] getMonthThresholds(){
+        return MONTH_THRESHOLDS;
+    }
+
+    double[] getInterestRates(){
+        return INTEREST_RATES;
+    }
 
     public double getInterestRate(int months) {
         for (int i = MONTH_THRESHOLDS.length - 1; i >= 0; i--) {
