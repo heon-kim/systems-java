@@ -19,29 +19,17 @@ public class ConanBooks {
             scanner.nextLine();
 
             switch (choice) {
-                case 1:
-                    showCustomerInfo();
-                    break;
-                case 2:
-                    showCart();
-                    break;
-                case 3:
-                    addToCart(scanner);
-                    break;
-                case 4:
-                    removeFromCart(scanner);
-                    break;
-                case 5:
-                    clearCart();
-                    break;
-                case 6:
-                    showReceipt(scanner);
-                    break;
-                case 7:
+                case 1->showCustomerInfo();
+                case 2->showCart();
+                case 3->addToCart(scanner);
+                case 4->removeFromCart(scanner);
+                case 5->clearCart();
+                case 6->showReceipt(scanner);
+                case 7->{
                     System.out.println("프로그램을 종료합니다.");
                     return;
-                default:
-                    System.out.println("올바른 메뉴 번호를 선택해주세요.");
+                }
+                default->System.out.println("올바른 메뉴 번호를 선택해주세요.");
             }
         }
     }
@@ -66,13 +54,9 @@ public class ConanBooks {
         System.out.println("오늘의 선택, 코난문고");
         System.out.println("영원한 스테디셀러, 명탐정 코난 시리즈를 만나보세요~");
         System.out.println("*****************************************");
-        System.out.println("1. 고객 정보 확인하기");
-        System.out.println("2. 장바구니 상품 목록 보기");
-        System.out.println("3. 바구니에 항목 추가하기");
-        System.out.println("4. 장바구니의 항목 삭제하기");
-        System.out.println("5. 장바구니 비우기");
-        System.out.println("6. 영수증 표시하기");
-        System.out.println("7. 종료");
+        System.out.println("1. 고객 정보 확인하기 2. 장바구니 상품 목록 보기");
+        System.out.println("3. 바구니에 항목 추가하기 4. 장바구니의 항목 삭제하기");
+        System.out.println("5. 장바구니 비우기 6. 영수증 표시하기 7. 종료");
         System.out.println("*****************************************");
         System.out.print("메뉴번호를 선택해주세요 ");
     }

@@ -1,4 +1,4 @@
-package bank;
+package hanabank;
 
 abstract class Account {
     protected String accountNumber;

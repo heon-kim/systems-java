@@ -1,8 +1,11 @@
-package bank;
+package hanabank;
 
 class FixedDepositAccount extends Account {
     private int depositMonths;
     private boolean isMatured;
+
+    private static final double[] INTEREST_RATES = {3.0, 3.35, 3.4, 3.35, 3.35, 2.9, 2.9, 2.9};
+    private static final int[] MONTH_THRESHOLDS = {1, 3, 6, 9, 12, 24, 36, 48, 60};
 
     public FixedDepositAccount(String accountNumber, String accountName, String ownerName, int balance, int depositMonths) {
         super(accountNumber, accountName, ownerName, balance);
@@ -13,12 +16,17 @@ class FixedDepositAccount extends Account {
     public void matureAccount(int months, Account target) throws Exception {
         if (isMatured) throw new Exception("이미 만기 처리된 계좌입니다.");
         depositMonths = months;
-        double interestRate = getInterestRate(months);
-        int finalAmount = (int) (balance * (1 + interestRate / 100));
-        System.out.println("만기 처리가 완료되었습니다. 금액: " + finalAmount + "원, 이체 계좌로 전송됩니다.");
+
+        int finalAmount = calculateMaturityAmount();
         target.deposit(finalAmount);
         isMatured = true;
         balance = 0;
+        System.out.println(accountName+"은 해지되었습니다. 감사합니다.");
+    }
+
+    private int calculateMaturityAmount() {
+        double interestRate = getInterestRate(depositMonths);
+        return (int) (balance * (1 + interestRate / 100));
     }
 
     @Override
@@ -38,15 +46,11 @@ class FixedDepositAccount extends Account {
     }
 
     private double getInterestRate(int months) {
-        if (months >= 60) return 2.9;
-        if (months >= 48) return 2.9;
-        if (months >= 36) return 2.9;
-        if (months >= 24) return 2.9;
-        if (months >= 12) return 3.35;
-        if (months >= 9) return 3.35;
-        if (months >= 6) return 3.4;
-        if (months >= 3) return 3.35;
-        if (months >= 1) return 3.0;
+        for (int i = MONTH_THRESHOLDS.length - 1; i >= 0; i--) {
+            if (months >= MONTH_THRESHOLDS[i]) {
+                return INTEREST_RATES[i];
+            }
+        }
         return 0;
     }
 }
