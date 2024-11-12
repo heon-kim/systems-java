@@ -3,6 +3,7 @@ package bank;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.TreeMap;
 
 public class OneHanaBank {
     public static void main(String[] args) {
@@ -199,7 +200,7 @@ class AccountHandler {
 
     public void start() {
         while (true) {
-            System.out.print("통장을 선택하세요 "+generateMenuString(accounts));
+            System.out.print("\n>> 통장을 선택하세요 "+generateMenuString(accounts));
             String choice = scanner.nextLine();
             if ("0".equals(choice) || choice.trim().isEmpty()) break;
             Account account = accounts.get(choice);
@@ -213,7 +214,7 @@ class AccountHandler {
         boolean isCompleted = false;
         while (!isCompleted) {
             Map<String, String> actions = account.getActionDescriptions();
-            String message = account instanceof FixedDepositAccount?"정기 예금이 만기되었습니다. ":"원하시는 업무는? ";
+            String message = account instanceof FixedDepositAccount?"> 정기 예금이 만기되었습니다. ":"> 원하시는 업무는? ";
             System.out.print(message+generateMenuString(actions));
             String action = scanner.nextLine();
             try {
@@ -358,20 +359,32 @@ class AccountHandler {
 }
 
 class InterestRateCalculator {
-    private static final double[] INTEREST_RATES = {3.0, 3.35, 3.4, 3.35, 3.35, 2.9, 2.9, 2.9};
-    private static final int[] MONTH_THRESHOLDS = {1, 3, 6, 9, 12, 24, 36, 48, 60};
+    private final Map<Integer, Double> interestRatesByMonths;
+
+    public InterestRateCalculator() {
+        this.interestRatesByMonths = new TreeMap<>();
+        interestRatesByMonths.put(1, 3.0);
+        interestRatesByMonths.put(3, 3.35);
+        interestRatesByMonths.put(6, 3.4);
+        interestRatesByMonths.put(9, 3.35);
+        interestRatesByMonths.put(12, 3.35);
+        interestRatesByMonths.put(24, 2.9);
+        interestRatesByMonths.put(36, 2.9);
+        interestRatesByMonths.put(48, 2.9);
+        interestRatesByMonths.put(60, 2.9);
+    }
 
     public double getInterestRate(int months) {
-        for (int i = MONTH_THRESHOLDS.length - 1; i >= 0; i--) {
-            if (months >= MONTH_THRESHOLDS[i]) return INTEREST_RATES[i];
-        }
-        return 0;
+        if (interestRatesByMonths.isEmpty()) return 0;
+
+        Map.Entry<Integer, Double> entry = ((TreeMap<Integer, Double>) interestRatesByMonths).floorEntry(months);
+        return (entry != null) ? entry.getValue() : 0;
     }
 
     public void printInterestRates() {
         System.out.println("* 예치 개월에 따른 적용 금리");
-        for (int i = 0; i < INTEREST_RATES.length; i++) {
-            System.out.println("    " + MONTH_THRESHOLDS[i] + "개월 이상    " + INTEREST_RATES[i] + "%");
+        for (Map.Entry<Integer, Double> entry : interestRatesByMonths.entrySet()) {
+            System.out.println("    " + entry.getKey() + "개월 이상    " + entry.getValue() + "%");
         }
     }
 }
