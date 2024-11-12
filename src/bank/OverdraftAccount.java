@@ -1,9 +1,13 @@
-package hanabank;
+package bank;
 
-class OverdraftAccount extends Account {
+class OverdraftAccount extends BasicAccount {
+    public OverdraftAccount(String accountNumber, String accountName, String ownerName, int balance) {
+        super(accountNumber, accountName, ownerName, balance);
+    }
 
-    public OverdraftAccount(String accountNumber, String accountName, String ownerName) {
-        super(accountNumber, accountName, ownerName, 0);
+    @Override
+    public void displayInfo() {
+        System.out.println(accountName+" 잔액: "+balance+"원");
     }
 
     @Override
@@ -23,6 +27,5 @@ class OverdraftAccount extends Account {
     public void transfer(Account target, int amount) {
         balance -= amount;
         target.deposit(amount);
-        System.out.println(accountName + "의 잔액은 " + balance + "원입니다.");
     }
 }
